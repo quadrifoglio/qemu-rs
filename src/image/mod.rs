@@ -47,6 +47,19 @@ pub struct Image {
     pub size: usize
 }
 
+impl Image {
+    /*
+     * Create a new image object
+     */
+    pub fn new(path: &str, format: Format, size: usize) -> Image {
+        Image {
+            path: path.to_owned(),
+            format: format,
+            size: size
+        }
+    }
+}
+
 /*
  * Tests module
  */
