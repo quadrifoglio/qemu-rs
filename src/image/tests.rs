@@ -1,3 +1,4 @@
+use std;
 use super::{Format, Image};
 
 /*
@@ -19,6 +20,7 @@ fn string_representations() {
  * Test image creation
  */
 #[test]
+#[allow(unused_must_use)]
 fn create() {
     let img_raw = Image::new("test.raw", Format::Raw, 536_870_912);
     assert!(img_raw.write().is_ok());
@@ -40,4 +42,13 @@ fn create() {
 
     let img_vpc = Image::new("test.vpc", Format::Vpc, 536_870_912);
     assert!(img_vpc.write().is_ok());
+
+    // Remove created files
+    std::fs::remove_file("test.raw");
+    std::fs::remove_file("test.qcow");
+    std::fs::remove_file("test.qcow2");
+    std::fs::remove_file("test.vmdk");
+    std::fs::remove_file("test.vdi");
+    std::fs::remove_file("test.vhdx");
+    std::fs::remove_file("test.vpc");
 }
