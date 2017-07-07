@@ -1,5 +1,8 @@
-use std::fmt;
+use super::{Error, Result};
+
+use std::{self, fmt};
 use std::vec::Vec;
+use std::process::Command;
 
 /*
  * Represents a memory size and layout to be used in a machine
@@ -39,7 +42,7 @@ impl Memory {
         Memory {
             size: size,
             slots: Some(slots),
-            maxmem: Some(size)
+            maxmem: Some(maxmem)
         }
     }
 }
@@ -95,6 +98,16 @@ pub struct Machine {
     drives: Vec<Drive>
 }
 
+/*
+ * Representation of a machine's current status
+ */
+pub struct MachineStatus {
+    /*
+     * True if the machine is currently running
+     */
+    pub running: bool
+}
+
 impl Machine {
     /*
      * Construct a new virtual machine with the specified memory setup,
@@ -113,6 +126,80 @@ impl Machine {
      */
     pub fn add_drive(&mut self, drive: Drive) {
         self.drives.push(drive);
+    }
+
+    /*
+     * Start the virtual machine
+     */
+    pub fn start(&self) -> Result<MachineStatus> {
+        // Prepare the command that will be run
+        let mut cmd = Command::new("qemu-system-x86_64");
+
+        // Only enable KVM hardware acceleration if requested
+        if self.kvm {
+            cmd.arg("-enable-kvm");
+        }
+
+        // Memory argument
+        // Syntax: <size>,slots<slots>,maxmem=<maxmem>
+        let mut mem_arg = String::new();
+
+        if self.mem.size > 0 {
+            mem_arg += self.mem.size.to_string().as_ref();
+        }
+        else {
+            return Err(Error::InvalidArgument("Invalid memory size (must be greater than 0)".to_owned()));
+        }
+
+        // If both slots and maxmem are specified, add them to the memory argument
+        if self.mem.slots.is_some() && self.mem.maxmem.is_some() {
+            let slots = self.mem.slots.unwrap();
+            let maxmem = self.mem.maxmem.unwrap();
+
+            // If slots is not zero
+            if slots > 0 {
+                mem_arg += format!(",slots={}", slots.to_string()).as_ref();
+            }
+            else {
+                return Err(Error::InvalidArgument("Invalid memory slots number (must be greater than 0)".to_owned()));
+            }
+
+            // If maxmem is not zero
+            if maxmem > 0 {
+                mem_arg += format!(",maxmem={}", maxmem.to_string()).as_ref();
+            }
+            else {
+                return Err(Error::InvalidArgument("Invalid maximum memory amout (must be greater than 0)".to_owned()));
+            }
+        }
+
+        // Add the memory setup to the command line arguments
+        cmd.args(&["-m", mem_arg.as_ref()]);
+
+        // Run the command as a background process
+        match cmd.spawn() {
+            // If running the command succeeded
+            Ok(mut child) => {
+                // Sleep for 500ms to give QEMU some time to boot
+                std::thread::sleep(std::time::Duration::from_millis(500));
+
+                // Check if QEMU is still running
+                match child.try_wait() {
+                    // If QEMU is still running after 500ms, consider the startup successful
+                    Ok(None) => Ok(MachineStatus {
+                        running: true
+                    }),
+
+                    // If QEMU exited, return the error
+                    Ok(Some(status)) => Err(Error::Other("QEMU exited unexpectedly".to_owned())),
+
+                    // If checking the process' status failed
+                    Err(err) => Err(Error::Io(err))
+                }
+            },
+            // If it failed
+            Err(err) => Err(Error::Io(err))
+        }
     }
 }
 

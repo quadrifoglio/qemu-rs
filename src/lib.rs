@@ -1,8 +1,10 @@
 /*
  * Custom Error type for this library
  */
+#[derive(Debug)]
 pub enum Error {
     Io(std::io::Error),
+    InvalidArgument(String),
     Other(String),
     Unknown
 }
