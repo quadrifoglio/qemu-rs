@@ -115,3 +115,9 @@ impl Machine {
         self.drives.push(drive);
     }
 }
+
+/*
+ * Unit tests
+ */
+#[cfg(test)]
+mod tests;
