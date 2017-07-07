@@ -3,10 +3,30 @@
  */
 #[derive(Debug)]
 pub enum Error {
+    /*
+     * Input/Output error
+     */
     Io(std::io::Error),
+
+    /*
+     * An invalid argument value was specified
+     */
     InvalidArgument(String),
+
+    /*
+     * QEMU unexpectedly exited
+     * Contains the outputed stdout data
+     */
     Runtime(String),
+
+    /*
+     * Other type of error
+     */
     Other(String),
+
+    /*
+     * Unknown error
+     */
     Unknown
 }
 
