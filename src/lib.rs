@@ -13,6 +13,11 @@ pub enum Error {
 pub type Result<T> = std::result::Result<T, Error>;
 
 /*
- * QEMU Image manipulation
+ * QEMU image manipulation
  */
 pub mod image;
+
+/*
+ * QEMU virtual machine management
+ */
+pub mod machine;
