@@ -1,14 +1,15 @@
 use super::{Error, Result};
 
 use std::{self, fmt};
+use std::io::Read;
 use std::vec::Vec;
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 /*
  * Represents a memory size and layout to be used in a machine
  */
 pub struct Memory {
-    // Machine's startup RAM size (bytes)
+    // Machine's startup RAM size (MiB)
     size: usize,
 
     // Number of hotpluggable memory slots
@@ -22,7 +23,7 @@ pub struct Memory {
 
 impl Memory {
     /*
-     * Construct a basic memory layout with the specified amout of stratup RAM in bytes
+     * Construct a basic memory layout with the specified amout of stratup RAM in MiB
      * Memory hotplug will not be available
      */
     pub fn new(size: usize) -> Memory {
@@ -35,8 +36,8 @@ impl Memory {
 
     /*
      * Construct a memory layout which supports memory hotplug with the specified amout
-     * of startup RAM (bytes), the specifed number of hotpluggable memory slots, and
-     * the maximum amout of RAM (bytes) that the guest will be able to handle (bytes)
+     * of startup RAM (MiB), the specifed number of hotpluggable memory slots, and
+     * the maximum amout of RAM (MiB) that the guest will be able to handle (MiB)
      */
     pub fn hotpluggable(size: usize, slots: u8, maxmem: usize) -> Memory {
         Memory {
@@ -135,6 +136,9 @@ impl Machine {
         // Prepare the command that will be run
         let mut cmd = Command::new("qemu-system-x86_64");
 
+        // Capture stderr, in order to be able to read it in case of a QEMU error
+        cmd.stderr(Stdio::piped());
+
         // Only enable KVM hardware acceleration if requested
         if self.kvm {
             cmd.arg("-enable-kvm");
@@ -191,7 +195,16 @@ impl Machine {
                     }),
 
                     // If QEMU exited, return the error
-                    Ok(Some(status)) => Err(Error::Other("QEMU exited unexpectedly".to_owned())),
+                    Ok(Some(status)) => {
+                        // Buffer to store stderr data
+                        let mut out = String::new();
+
+                        // Read stderr
+                        match child.stderr.unwrap().read_to_string(&mut out) {
+                            Ok(_) => Err(Error::Runtime(format!("QEMU exited: {}", out))),
+                            _ => Err(Error::Runtime("QEMU exited unexpectedly".to_owned()))
+                        }
+                    },
 
                     // If checking the process' status failed
                     Err(err) => Err(Error::Io(err))

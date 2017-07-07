@@ -9,7 +9,7 @@ fn drive_media_representations() {
 
 #[test]
 fn start_memory_basic_valid() {
-    let machine = Machine::new(Memory::new(536_870_912), false);
+    let machine = Machine::new(Memory::new(512), false);
     machine.start().unwrap();
 }
 
@@ -22,20 +22,20 @@ fn start_memory_basic_invalid() {
 
 #[test]
 fn start_memory_hotpluggable_valid() {
-    let machine = Machine::new(Memory::hotpluggable(1_073_741_824, 3, 4_294_967_296), false);
+    let machine = Machine::new(Memory::hotpluggable(1024, 3, 4096), false);
     machine.start().unwrap();
 }
 
 #[test]
 #[should_panic]
 fn start_memory_hotpluggable_invalid_1() {
-    let machine = Machine::new(Memory::hotpluggable(1_073_741_824, 0, 4_294_967_296), false);
+    let machine = Machine::new(Memory::hotpluggable(1024, 0, 4096), false);
     machine.start().unwrap();
 }
 
 #[test]
 #[should_panic]
 fn start_memory_hotpluggable_invalid_2() {
-    let machine = Machine::new(Memory::hotpluggable(1_073_741_824, 3, 0), false);
+    let machine = Machine::new(Memory::hotpluggable(1024, 3, 0), false);
     machine.start().unwrap();
 }

@@ -5,6 +5,7 @@
 pub enum Error {
     Io(std::io::Error),
     InvalidArgument(String),
+    Runtime(String),
     Other(String),
     Unknown
 }
