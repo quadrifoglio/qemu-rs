@@ -1,5 +1,7 @@
-use image::{Image, Format};
 use super::{Drive, DriveMedia, Memory, Machine};
+use image::{Image, Format};
+
+use std::path::Path;
 
 #[test]
 fn drive_media_representations() {
@@ -18,6 +20,14 @@ fn start_memory_basic_valid() {
 fn start_memory_basic_invalid() {
     let machine = Machine::new(Memory::new(0), false);
     machine.start().unwrap();
+}
+
+#[test]
+fn start_memory_basic_kvm_valid() {
+    if Path::new("/dev/kvm").exists() {
+        let machine = Machine::new(Memory::new(512), true);
+        machine.start().unwrap();
+    }
 }
 
 #[test]
