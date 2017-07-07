@@ -6,9 +6,55 @@ use std::vec::Vec;
 use std::process::{Command, Stdio};
 
 /*
+ * Represents a CPU setup for a virtual machine
+ */
+pub struct CpuSetup {
+    // Number of global CPUs
+    // If this is not specified, one of the three other values must be
+    cpus: Option<u8>,
+
+    // Number of sockets
+    sockets: Option<u8>,
+
+    // Number of cores per socket
+    cores_per_sockets: Option<u8>,
+
+    // Number of thread per core
+    threads_per_cores: Option<u8>
+}
+
+impl CpuSetup {
+    /*
+     * Construct a simple CPU setup, give a number of CPUs
+     */
+    pub fn new(cpus: u8) -> CpuSetup {
+        CpuSetup {
+            cpus: Some(cpus),
+            sockets: None,
+            cores_per_sockets: None,
+            threads_per_cores: None
+        }
+    }
+
+    /*
+     * Construct a custom CPU setup
+     * Must be specified: number of sockets, number of cores per socket
+     * and number of threads per core
+     */
+    pub fn custom(sockets: u8, cores: u8, threads: u8) -> CpuSetup {
+        CpuSetup {
+            cpus: None,
+            sockets: Some(sockets),
+            cores_per_sockets: Some(cores),
+            threads_per_cores: Some(threads)
+        }
+    }
+}
+
+/*
  * Represents a memory size and layout to be used in a machine
  */
-pub struct Memory {
+pub struct MemorySetup {
     // Machine's startup RAM size (MiB)
     size: usize,
 
@@ -21,13 +67,13 @@ pub struct Memory {
     maxmem: Option<usize>
 }
 
-impl Memory {
+impl MemorySetup {
     /*
      * Construct a basic memory layout with the specified amout of stratup RAM in MiB
      * Memory hotplug will not be available
      */
-    pub fn new(size: usize) -> Memory {
-        Memory {
+    pub fn new(size: usize) -> MemorySetup {
+        MemorySetup {
             size: size,
             slots: None,
             maxmem: None
@@ -39,8 +85,8 @@ impl Memory {
      * of startup RAM (MiB), the specifed number of hotpluggable memory slots, and
      * the maximum amout of RAM (MiB) that the guest will be able to handle (MiB)
      */
-    pub fn hotpluggable(size: usize, slots: u8, maxmem: usize) -> Memory {
-        Memory {
+    pub fn hotpluggable(size: usize, slots: u8, maxmem: usize) -> MemorySetup {
+        MemorySetup {
             size: size,
             slots: Some(slots),
             maxmem: Some(maxmem)
@@ -133,7 +179,10 @@ impl TapInterface {
  */
 pub struct Machine {
     kvm: bool,
-    mem: Memory,
+
+    cpu: CpuSetup,
+    mem: MemorySetup,
+
     drives: Vec<Drive>,
     interfaces: Vec<TapInterface>
 }
@@ -153,9 +202,10 @@ impl Machine {
      * Construct a new virtual machine with the specified memory setup,
      * with the option to use KVM-based hardware acceleration
      */
-    pub fn new(mem: Memory, use_kvm: bool) -> Machine {
+    pub fn new(cpu: CpuSetup, mem: MemorySetup, use_kvm: bool) -> Machine {
         Machine {
             kvm: use_kvm,
+            cpu: cpu,
             mem: mem,
             drives: Vec::new(),
             interfaces: Vec::new()
@@ -189,6 +239,33 @@ impl Machine {
         // Only enable KVM hardware acceleration if requested
         if self.kvm {
             cmd.arg("-enable-kvm");
+        }
+
+        // CPU setup
+        if let Some(cpus) = self.cpu.cpus {
+            if cpus > 0 {
+                cmd.args(&["-smp", cpus.to_string().as_ref()]);
+            }
+            else {
+                return Err(Error::InvalidArgument("Invalid number of CPUs (must be greater than 0)".to_owned()));
+            }
+        }
+        // If custom CPU setup
+        else if self.cpu.sockets.is_some() && self.cpu.cores_per_sockets.is_some() && self.cpu.threads_per_cores.is_some() {
+            let sockets = self.cpu.sockets.unwrap();
+            let cores = self.cpu.cores_per_sockets.unwrap();
+            let threads = self.cpu.threads_per_cores.unwrap();
+
+            // Manually specify the number of sockets, cores and threads
+            if sockets > 0 && cores > 0 && threads > 0 {
+                cmd.args(&[
+                    "-smp",
+                    format!("cores={},threads={},sockets={}", cores, threads, sockets).as_ref()
+                ]);
+            }
+            else {
+                return Err(Error::InvalidArgument("Invalid CPU parameters (sockets, cores, threads) (must be greater than 0)".to_owned()));
+            }
         }
 
         // Memory argument
