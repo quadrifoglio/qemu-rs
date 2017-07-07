@@ -91,12 +91,51 @@ impl Drive {
 }
 
 /*
+ * Represents a TAP network interface
+ */
+pub struct TapInterface {
+    /*
+     * Name/ID of the TAP interface
+     * It will be shown by that name on the host
+     */
+    name: String,
+
+    /*
+     * Optional custom MAC address
+     */
+    custom_mac: Option<String>
+}
+
+impl TapInterface {
+    /*
+     * Construct a new TAP interface with a random MAC address
+     */
+    pub fn new<S: Into<String>>(name: S) -> TapInterface {
+        TapInterface {
+            name: name.into(),
+            custom_mac: None
+        }
+    }
+
+    /*
+     * Construct a new TAP interface with a random MAC address
+     */
+    pub fn with_mac_addr<S: Into<String>>(name: S, mac: S) -> TapInterface {
+        TapInterface {
+            name: name.into(),
+            custom_mac: Some(mac.into())
+        }
+    }
+}
+
+/*
  * Representation of a QEMU virtual machine
  */
 pub struct Machine {
     kvm: bool,
     mem: Memory,
-    drives: Vec<Drive>
+    drives: Vec<Drive>,
+    interfaces: Vec<TapInterface>
 }
 
 /*
@@ -118,7 +157,8 @@ impl Machine {
         Machine {
             kvm: use_kvm,
             mem: mem,
-            drives: Vec::new()
+            drives: Vec::new(),
+            interfaces: Vec::new()
         }
     }
 
@@ -127,6 +167,13 @@ impl Machine {
      */
     pub fn add_drive(&mut self, drive: Drive) {
         self.drives.push(drive);
+    }
+
+    /*
+     * Attach a TAP network interface to the virtual machine
+     */
+    pub fn add_interface(&mut self, iface: TapInterface) {
+        self.interfaces.push(iface);
     }
 
     /*
@@ -179,6 +226,28 @@ impl Machine {
 
         // Add the memory setup to the command line arguments
         cmd.args(&["-m", mem_arg.as_ref()]);
+
+        // Setup network interfaces
+        for iface in &self.interfaces {
+            let mut dev = format!("virtio-net,netdev={}", iface.name);
+
+            // If we specified a custom MAC address
+            if let Some(ref mac) = iface.custom_mac {
+                if mac.len() > 0 {
+                    dev = format!("{},mac={}", dev, mac);
+                }
+                else {
+                    return Err(Error::InvalidArgument("Invalid custom MAC address".to_owned()));
+                }
+            }
+
+            // Add the correct arguments to the command line
+            // First the netdev, then de virtio device (cf man qemu)
+            cmd.args(&[
+                "-netdev", format!("tap,id={},ifname={}", iface.name, iface.name).as_ref(),
+                "-device", dev.as_ref()
+            ]);
+        }
 
         // Run the command as a background process
         match cmd.spawn() {

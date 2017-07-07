@@ -1,4 +1,4 @@
-use super::{Drive, DriveMedia, Memory, Machine};
+use super::{Drive, DriveMedia, Memory, TapInterface, Machine};
 use image::{Image, Format};
 
 use std::path::Path;
@@ -47,5 +47,32 @@ fn start_memory_hotpluggable_invalid_1() {
 #[should_panic]
 fn start_memory_hotpluggable_invalid_2() {
     let machine = Machine::new(Memory::hotpluggable(1024, 3, 0), false);
+    machine.start().unwrap();
+}
+
+#[test]
+fn start_one_interface_basic_valid() {
+    let mut machine = Machine::new(Memory::new(512), false);
+
+    machine.add_interface(TapInterface::new("tamer0"));
+    machine.start().unwrap();
+}
+
+#[test]
+fn start_one_interface_custom_mac_valid() {
+    let mut machine = Machine::new(Memory::new(512), false);
+
+    machine.add_interface(TapInterface::with_mac_addr("tamer1", "52:54:01:02:03:04"));
+    machine.start().unwrap();
+}
+
+#[test]
+fn start_multiple_interfaces() {
+    let mut machine = Machine::new(Memory::new(512), false);
+
+    machine.add_interface(TapInterface::new("tamer2"));
+    machine.add_interface(TapInterface::new("tamer3"));
+    machine.add_interface(TapInterface::new("tamer4"));
+
     machine.start().unwrap();
 }
