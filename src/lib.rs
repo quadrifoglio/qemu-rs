@@ -8,12 +8,13 @@ pub mod error;
 
 use std::env;
 use std::path::Path;
+use std::ffi::OsString;
 
 use error::Result;
 
 /// Object used to initialize a new QEMU instance with the specified parameters.
 pub struct Builder {
-    executable: String,
+    executable: OsString,
     params: Vec<Box<Parameter>>,
 }
 
@@ -22,37 +23,34 @@ impl Builder {
     /// The executable can be a path to QEMU, or just the name of the program if it can be found
     /// using the system's PATH.
     pub fn new<S: Into<String>>(executable: S) -> Result<Builder> {
-        let mut exec = executable.into();
+        let exec = executable.into();
 
-        // Search the system's PATH if the specified executable cannot be directly resolved to a
-        // file.
-        if !Path::new(&exec).exists() {
-            let path = env::var_os("PATH").and_then(|paths| {
-                for path in env::split_paths(&paths) {
-                    let path = path.join(&exec);
+        let exec_path = match Path::new(&exec).exists() {
+            false => {
+                let path = env::var_os("PATH").and_then(|paths| {
+                    for path in env::split_paths(&paths) {
+                        let path = path.join(&exec);
 
-                    if path.is_file() {
-                        return Some(path);
+                        if path.is_file() {
+                            return Some(path);
+                        }
                     }
+
+                    None
+                });
+
+                if let Some(path) = path {
+                    path.into_os_string()
+                } else {
+                    return Err(error::InitError::ExecutableNotFound{exec: exec}.into());
                 }
+            },
 
-                None
-            });
-
-            let err = error::InitError::ExecutableNotFound{exec: exec};
-
-            if let Some(path) = path {
-                exec = path
-                    .into_os_string()
-                    .into_string()
-                    .map_err(|_| err)?;
-            } else {
-                return Err(err.into());
-            }
-        }
+            true => exec.into(),
+        };
 
         Ok(Builder {
-            executable: exec,
+            executable: exec_path,
             params: Vec::new(),
         })
     }
