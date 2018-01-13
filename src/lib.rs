@@ -5,6 +5,7 @@
 extern crate failure;
 
 pub mod error;
+pub mod machine;
 
 use std::env;
 use std::path::Path;
@@ -57,7 +58,7 @@ impl Builder {
     }
 
     /// Use the behavior defined in the specified object, and pass it as QEMU emulator options.
-    pub fn set<'a, A: IntoArguments>(&'a mut self, a: A) -> &'a mut Self {
+    pub fn set<A: IntoArguments>(mut self, a: A) -> Self {
         self.params.extend(a.into_arguments());
         self
     }

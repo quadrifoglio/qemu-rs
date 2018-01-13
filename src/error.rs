@@ -9,5 +9,10 @@ pub enum InitError {
     #[fail(display = "could not find QEMU executable: {}", exec)]
     ExecutableNotFound {
         exec: String,
-    }
+    },
+
+    #[fail(display = "invalid QEMU configuration: {}", msg)]
+    InvalidConfig {
+        msg: String,
+    },
 }
