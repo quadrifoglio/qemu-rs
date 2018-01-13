@@ -16,13 +16,13 @@ use error::Result;
 /// Object used to initialize a new QEMU instance with the specified parameters.
 pub struct Builder {
     executable: OsString,
-    params: Vec<Box<Parameter>>,
+    params: Vec<String>,
 }
 
 impl Builder {
     /// Create a new Builder with the specified QEMU executable.
-    /// The executable can be a path to QEMU, or just the name of the program if it can be found
-    /// using the system's PATH.
+    /// That executable can either be the path to a QEMU binary, or just its name, in which case it
+    /// will be resolved using the system's PATH environment variable.
     pub fn new<S: Into<String>>(executable: S) -> Result<Builder> {
         let exec = executable.into();
 
@@ -56,14 +56,23 @@ impl Builder {
         })
     }
 
+    /// Use the behavior defined in the specified object, and pass it as QEMU emulator options.
+    pub fn set<'a, A: IntoArguments>(&'a mut self, a: A) -> &'a mut Self {
+        self.params.extend(a.into_arguments());
+        self
+    }
+
     /// Start the QEMU emulator. Immediatly returns the control to the control to the caller, does
     /// not wait on the spawned child process.
     pub fn start(self) -> Result<Instance> {
         let mut command = Command::new(self.executable);
-        let child = command.spawn()?;
+
+        for param in self.params {
+            command.arg(param);
+        }
 
         Ok(Instance {
-            process: child,
+            process: command.spawn()?,
         })
     }
 }
@@ -73,63 +82,10 @@ pub struct Instance {
     process: Child,
 }
 
-/// Trait that represent a command line parameter that can be passed to QEMU.
-/// Pair of (parameter_name, parameter_value).
-/// Example: ('name', 'My VM').
-pub trait Parameter {
-    /// Returns the name of the command line parameter.
-    /// Examples: 'display', 'smp', 'm'...
-    fn name(&self) -> &str;
-
-    /// Returns the value for a command line parameter, if any.
-    /// Examples for the 'display' parameter name: 'sdl', 'curses', 'none'...
-    fn value(&self) -> Option<&str>;
-
-    /// Take ownership of the parameter. Returns its name and value.
-    /// Consumes `self`.
-    fn take(self) -> (String, Option<String>);
-}
-
-impl Parameter for &'static str {
-    fn name(&self) -> &str {
-        self
-    }
-
-    fn value(&self) -> Option<&str> {
-        None
-    }
-
-    fn take(self) -> (String, Option<String>) {
-        (self.into(), None)
-    }
-}
-
-impl Parameter for String {
-    fn name(&self) -> &str {
-        self.as_ref()
-    }
-
-    fn value(&self) -> Option<&str> {
-        None
-    }
-
-    fn take(self) -> (String, Option<String>) {
-        (self, None)
-    }
-}
-
-impl<S: AsRef<str> + Into<String>> Parameter for (S, S) {
-    fn name(&self) -> &str {
-        self.0.as_ref()
-    }
-
-    fn value(&self) -> Option<&str> {
-        Some(self.1.as_ref())
-    }
-
-    fn take(self) -> (String, Option<String>) {
-        (self.0.into(), Some(self.1.into()))
-    }
+/// Trait implemented for every object that represent some kind of option of the QEMU emulator.
+pub trait IntoArguments {
+    /// Must return the list of command line arguments that will be passed to QEMU.
+    fn into_arguments(self) -> Vec<String>;
 }
 
 #[cfg(test)]
