@@ -9,6 +9,7 @@ pub mod error;
 use std::env;
 use std::path::Path;
 use std::ffi::OsString;
+use std::process::{Command, Child};
 
 use error::Result;
 
@@ -54,6 +55,22 @@ impl Builder {
             params: Vec::new(),
         })
     }
+
+    /// Start the QEMU emulator. Immediatly returns the control to the control to the caller, does
+    /// not wait on the spawned child process.
+    pub fn start(self) -> Result<Instance> {
+        let mut command = Command::new(self.executable);
+        let child = command.spawn()?;
+
+        Ok(Instance {
+            process: child,
+        })
+    }
+}
+
+/// Represents an running QEMU instance.
+pub struct Instance {
+    process: Child,
 }
 
 /// Trait that represent a command line parameter that can be passed to QEMU.
