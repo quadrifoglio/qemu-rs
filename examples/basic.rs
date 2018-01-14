@@ -3,11 +3,12 @@
 
 extern crate qemu;
 
-use qemu::machine::Processors;
+use qemu::machine::{Processors, Memory};
 
 fn main() {
     let builder = qemu::Builder::new("qemu-system-x86_64").unwrap()
-        .set(Processors::with(Some(1), Some(2), None).unwrap().set_max_cpus(255));
+        .set(Processors::new(1).set_max_cpus(255))
+        .set(Memory::new(128));
 
     let emulator = builder.start().unwrap();
 }

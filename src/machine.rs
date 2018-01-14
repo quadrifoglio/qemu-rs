@@ -80,3 +80,46 @@ impl super::IntoArguments for Processors {
         vec![String::from("-smp"), settings]
     }
 }
+
+/// Represents RAM settings.
+pub struct Memory {
+    size: u64,
+    slots: Option<u8>,
+    maxmem: Option<u64>,
+}
+
+impl Memory {
+    /// Construct a new Memory object with the specified amout of RAM in MiB. Hotpluggable memory
+    /// will not be available.
+    pub fn new(size: u64) -> Memory {
+        Memory {
+            size: size,
+            slots: None,
+            maxmem: None,
+        }
+    }
+
+    /// Construct a new Memory object with the specified amount of RAM in MiB, and a defined number
+    /// of hotpluggable memory slots and amount in MiB. Not that `maxmem` mut be aligned with the
+    /// page size.
+    pub fn with(size: u64, slots: u8, maxmem: u64) -> Memory {
+        Memory {
+            size: size,
+            slots: Some(slots),
+            maxmem: Some(maxmem),
+        }
+    }
+}
+
+impl super::IntoArguments for Memory {
+    fn into_arguments(self) -> Vec<String> {
+        let mut settings = format!("size={}", self.size);
+
+        if self.slots.is_some() && self.maxmem.is_some() {
+            settings.push_str(format!(",slots={}", self.slots.unwrap()).as_str());
+            settings.push_str(format!(",maxmem={}", self.maxmem.unwrap()).as_str());
+        }
+
+        vec![String::from("-m"), settings]
+    }
+}
