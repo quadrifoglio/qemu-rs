@@ -123,3 +123,51 @@ impl super::IntoArguments for Memory {
         vec![String::from("-m"), settings]
     }
 }
+
+/// VNC Display settings.
+pub struct VncDisplay {
+    host: String,
+    display: u32,
+    ws_port: Option<u16>,
+}
+
+/// Represnts the settings of a display used with a machine.
+pub enum Display {
+    None,
+    Sdl,
+    Vnc(VncDisplay),
+}
+
+impl Display {
+    /// Create a new VNC display configuration.
+    pub fn vnc<S: Into<String>>(host: S, display: u32) -> Display {
+        Display::Vnc(VncDisplay {
+            host: host.into(),
+            display: display,
+            ws_port: None,
+        })
+    }
+}
+
+impl super::IntoArguments for Display {
+    fn into_arguments(self) -> Vec<String> {
+        let mut args = vec![String::from("-display")];
+
+        let param = match self {
+            Display::None => String::from("none"),
+            Display::Sdl => String::from("sdl"),
+            Display::Vnc(vnc) => {
+                let mut param = format!("vnc {}:{}", vnc.host, vnc.display);
+
+                if let Some(ws_port) = vnc.ws_port {
+                    param.push_str(format!(",websocket={}", ws_port).as_str());
+                }
+
+                param
+            },
+        };
+
+        args.push(param);
+        args
+    }
+}
