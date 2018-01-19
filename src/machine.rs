@@ -127,8 +127,8 @@ impl super::IntoArguments for Memory {
 /// VNC Display settings.
 pub struct VncDisplay {
     host: String,
-    display: u32,
-    ws_port: Option<u16>,
+    display: u16,
+    ws_display: Option<u16>,
 }
 
 /// Represnts the settings of a display used with a machine.
@@ -140,11 +140,20 @@ pub enum Display {
 
 impl Display {
     /// Create a new VNC display configuration.
-    pub fn vnc<S: Into<String>>(host: S, display: u32) -> Display {
+    pub fn vnc<S: Into<String>>(host: S, display: u16) -> Display {
         Display::Vnc(VncDisplay {
             host: host.into(),
             display: display,
-            ws_port: None,
+            ws_display: None,
+        })
+    }
+
+    /// Create a new VNC display configuration with an additional websocket display number.
+    pub fn vnc_ws<S: Into<String>>(host: S, display: u16, ws_display: u16) -> Display {
+        Display::Vnc(VncDisplay {
+            host: host.into(),
+            display: display,
+            ws_display: Some(ws_display),
         })
     }
 }
@@ -159,8 +168,8 @@ impl super::IntoArguments for Display {
             Display::Vnc(vnc) => {
                 let mut param = format!("vnc {}:{}", vnc.host, vnc.display);
 
-                if let Some(ws_port) = vnc.ws_port {
-                    param.push_str(format!(",websocket={}", ws_port).as_str());
+                if let Some(ws_display) = vnc.ws_display {
+                    param.push_str(format!(",websocket={}", ws_display).as_str());
                 }
 
                 param
