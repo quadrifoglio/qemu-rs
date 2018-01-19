@@ -69,3 +69,34 @@ impl super::IntoArguments for Display {
         args
     }
 }
+
+/// Type of VGA card to emulate.
+pub enum Vga {
+    None,
+    Cirrus,
+    Std,
+    VMWare,
+    Qxl,
+    Tcx,
+    Cg3,
+    Virtio,
+}
+
+impl super::IntoArguments for Vga {
+    fn into_arguments(self) -> Vec<String> {
+        let mut args = vec![String::from("-vga")];
+
+        args.push(match self {
+            Vga::None => String::from("none"),
+            Vga::Cirrus => String::from("cirrus"),
+            Vga::Std => String::from("std"),
+            Vga::VMWare => String::from("vmware"),
+            Vga::Qxl => String::from("qxl"),
+            Vga::Tcx => String::from("tcx"),
+            Vga::Cg3 => String::from("cg3"),
+            Vga::Virtio => String::from("virtio"),
+        });
+
+        args
+    }
+}
