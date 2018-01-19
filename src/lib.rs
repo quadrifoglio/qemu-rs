@@ -6,6 +6,7 @@ extern crate failure;
 
 pub mod error;
 pub mod machine;
+pub mod display;
 
 use std::env;
 use std::path::Path;
