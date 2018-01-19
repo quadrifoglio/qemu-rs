@@ -5,6 +5,7 @@ pub struct Vnc {
     host: String,
     display: u16,
     ws_port: Option<u16>,
+    password: bool,
 }
 
 impl Vnc {
@@ -14,6 +15,7 @@ impl Vnc {
             host: host.into(),
             display: display,
             ws_port: None,
+            password: false,
         }
     }
 
@@ -23,7 +25,14 @@ impl Vnc {
             host: host.into(),
             display: display,
             ws_port: Some(ws_port),
+            password: false,
         }
+    }
+
+    /// Specify wether the VNC server should require a password. The password must be set separetly
+    /// using the QEMU Monitor.
+    pub fn use_password(&mut self, passwd: bool) {
+        self.password = passwd;
     }
 }
 
@@ -45,7 +54,11 @@ impl super::IntoArguments for Display {
                 let mut param = format!("vnc={}:{}", vnc.host, vnc.display);
 
                 if let Some(ws_port) = vnc.ws_port {
-                    param.push_str(format!(",websocket={}", ws_port).as_str());
+                    param.push_str(&format!(",websocket={}", ws_port));
+                }
+
+                if vnc.password == true {
+                    param.push_str(&String::from(",password"));
                 }
 
                 param
